@@ -7,6 +7,7 @@
   "type": "module",
   "main": "./js/blog.js",
   "scripts": {
+    "prestart": "cd ./ts/",
     "start": "node ./js/index.js"
   },
   "dependencies": {
