@@ -67,7 +67,7 @@ A command-line interface (CLI) application for creating, viewing, and managing b
 
 ## Scripts
 
-- **`npm start`**: Compiles TypeScript to JavaScript (if necessary) and starts the application.
+- **`npm start`**: Compiles TypeScript to JavaScript and starts the application.
 
 ---
 
