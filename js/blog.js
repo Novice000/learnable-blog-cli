@@ -5,7 +5,7 @@ import { onExit, createUser } from "./utils.js";
 const print = console.log;
 let info = "Press Ctrl+C to exit at any time except during databse operations";
 print(chalk.bgGreen("Welcome to blog app"));
-let choices = [
+let initialChoices = [
     {
         value: "create",
         name: "CREATE",
