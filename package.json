@@ -7,7 +7,7 @@
   "type": "module",
   "main": "./js/blog.js",
   "scripts": {
-    "start": "node ./js/blog.js"
+    "start": "node ./js/index.js"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.2.1",

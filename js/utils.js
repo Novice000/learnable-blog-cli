@@ -2,78 +2,106 @@ import chalk from "chalk";
 import * as bcrypt from "bcrypt";
 import db from "./db.js";
 const rounds = 5;
-function checkPassword(person) {
+export var returnValues;
+(function (returnValues) {
+    returnValues[returnValues["user doesn't exist"] = 0] = "user doesn't exist";
+    returnValues[returnValues["password doesn't match"] = 1] = "password doesn't match";
+    returnValues[returnValues["user already exists"] = 2] = "user already exists";
+    returnValues[returnValues["user created"] = 3] = "user created";
+    returnValues[returnValues["logged in"] = 4] = "logged in";
+})(returnValues || (returnValues = {}));
+export function checkPassword({ person }) {
     return person.password.trim() === person.re_password?.trim();
 }
-function onExit(error, message = null) {
+export function onExit(error, message = null) {
     if (error instanceof Error && error.name === "ExitPromptError") {
-        if (message == null) {
-            chalk.red;
-        }
-        // noop; silence this error
+        console.error(chalk.red(message || "Exiting..."));
+        process.exit(1);
     }
     else {
         throw error;
     }
 }
-;
-async function createUser(person) {
-    console.log("creating user");
-    if (person.password.toLowerCase() === person.re_password?.toLowerCase()) {
-        console.log("in here");
-        let name = person.name.toLocaleLowerCase();
-        console.log("in here 2");
-        // check if the user exists
-        const user = db.prepare("SELECT * FROM users WHERE name = ?").all(name);
-        console.log("in here 3");
-        // if not create a new user
-        if (user.length == 0) {
-            console.log("in here 4");
-            let hashedPassword = await bcrypt.hash(person.password, rounds);
-            console.log("in here 5");
-            let create = db.prepare("INSERT INTO users (name, password) VALUES (?,?)");
-            console.log("in here 6");
-            create.run(name, hashedPassword);
-            console.log("in here 7");
-            console.log("user created");
-        }
-        // if user does console.log that the user exists
-        else {
-            console.log("user already exists");
-        }
+export async function getUser({ name, password, }) {
+    const getUserStatement = db.prepare("SELECT * FROM users WHERE name = ?");
+    const user = getUserStatement.get(name);
+    if (!user) {
+        return null; // User not found
     }
-    else {
-        console.log("password does not match");
+    // Compare the provided password with the stored hashed password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+        return null; // Password doesn't match
     }
+    return user; // User found and password matches
 }
-function loginUser(person) {
+export function getPost({ id, user_id, }) {
+    const postGetter = db.prepare("SELECT * FROM posts WHERE id = ? AND user_id = ?");
+    const post = postGetter.get(id, user_id);
+    if (!post) {
+        return null; // post is empty
+    }
+    return post;
+}
+export async function createUser(person) {
+    console.log(chalk.greenBright("Creating user..."));
+    // Ensure passwords match
+    if (person.password !== person.re_password) {
+        return 1; //password doesn't match
+    }
+    const name = person.name.toLocaleLowerCase();
+    // Check if the user already exists
+    const user = db.prepare("SELECT * FROM users WHERE name = ?").get(name);
+    if (user) {
+        // User already exists
+        return 2;
+    }
+    // Create a new user
+    const hashedPassword = await bcrypt.hash(person.password, rounds);
+    db.prepare("INSERT INTO users (name, password) VALUES (?, ?)").run(name, hashedPassword);
+    return 3; // user created
+}
+export async function loginUser({ person }) {
     let name = person.name.toLocaleLowerCase();
-    let password = bcrypt.hash(person.password, rounds);
-    let search = db.prepare("SELECT * FROM users WHERE name = ? AND password = ?");
-    let searchResult = search.all(name, password);
-    if (searchResult.length === 0) {
-        console.log("user doesn't exist");
+    let password = person.password;
+    // Search for the user in the database by name
+    let search = db.prepare("SELECT * FROM users WHERE name = ?");
+    let searchResult = search.get(name);
+    if (!searchResult) {
+        // User not found
+        return 0; // "user doesn't exist"
     }
-    else if (searchResult.length === 1) {
-        return searchResult[0];
+    // Compare provided password with the stored hashed password
+    const passwordMatch = await bcrypt.compare(password, searchResult.password);
+    if (!passwordMatch) {
+        // Password doesn't match
+        return 1; // "password doesn't match"
     }
+    // User successfully logged in
+    return 4; // "logged in"
 }
-function createPost(name, title, post) {
-    const getUser = db.prepare("SELECT * FROM users WHERE name = ?");
-    const user = getUser.get(name);
-    const createPost = db.prepare("INSER INTO posts (user_id, title, post) VALUES (?,?,?)");
-    createPost.run(user.id, title, post);
+export function createPost({ user_id, title, post, }) {
+    const createPost = db.prepare("INSERt INTO posts (user_id, title, post) VALUES (?,?,?)");
+    createPost.run(user_id, title, post);
     console.log(chalk.green("post created"));
 }
-function DeletePost(user_id, id) {
+export function deletePost({ user_id, id, }) {
     const removePost = db.prepare("DELETE FROM posts where id = ? AND user_id = ?");
-    removePost.run(id);
+    removePost.run(id, user_id);
+    console.log(chalk.green("post deleted"));
 }
-function viewPost(post) {
+export function viewPost({ post }) {
     console.log(chalk.bgBlackBright(`
     ${chalk.blue("POST ID")}: ${post.id}\n
-    ${chalk.blue("TITLE")}: ${post.title}\n
-    ${chalk.blue("POST")}: ${post.post}\n\n\n
-    `));
+    ${chalk.blue("TITLE")}: ${chalk.bold(post.title)}\n
+    ${chalk.blue("POST")}: ${post.post}\n
+  `));
 }
-export { checkPassword, onExit, loginUser, createUser, DeletePost, createPost, viewPost };
+export function getAllPost({ id }) {
+    const allPostStatements = db.prepare("SELECT id, title FROM posts where user_id = ?");
+    const allPosts = allPostStatements.all(id);
+    if (!allPosts) {
+        return null;
+    }
+    return allPosts;
+}
