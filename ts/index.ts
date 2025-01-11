@@ -1,4 +1,4 @@
-import { initialChoices, actionChoice } from "./choice.js";
+import { initialChoices, actionChoice, info } from "./choice.js";
 import { input, select, password, Separator, number } from "@inquirer/prompts";
 import chalk from "chalk";
 import {
@@ -69,6 +69,7 @@ async function main(): Promise<void> {
   }
 
   while (true) {
+    console.info(info)
     const action = await select({
       message: "What would you like to do?",
       choices: actionChoice,
@@ -82,6 +83,7 @@ async function main(): Promise<void> {
       }
 
       console.table(allPosts);
+      console.info(info)
       const postId = await number({ message: "Type in the post ID" });
       const postIdNum = Number(postId);
       if (isNaN(postIdNum)) {
@@ -109,6 +111,12 @@ async function main(): Promise<void> {
       createPost({ user_id: USER.id, title: post.title, post: post.post });
       console.log(chalk.green("POST CREATED"));
     } else if (action === "delete") {
+      const allPosts = getAllPost({ id: USER.id })
+      if (!allPosts || allPosts.length === 0) {
+          console.log("NO POST TO VIEW");
+          continue;
+        }
+      console.table(allPosts)
       const postId = await number({ message: "Type in the post ID" });
       const postIdNum = Number(postId);
       if (isNaN(postIdNum)) {
